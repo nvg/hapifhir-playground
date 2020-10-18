@@ -2,6 +2,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Patient;
 
@@ -51,13 +52,13 @@ public class SampleClient {
 	 * @throws IOException IOException is thrown in case names can not be retrieved
 	 *                     from the classpath.
 	 */
-	public void search() throws IOException {
+	public void search(int attepmtsCount) throws IOException {
 		TimingInterceptor ti = new TimingInterceptor();
 		client.registerInterceptor(ti);
 
 		try {
-			for (int i = 0; i < 3; i++) {
-				runSearch(client, i == 2);
+			for (int i = 0; i < attepmtsCount; i++) {
+				runSearch(client, (i % 3) == 0);
 
 				System.out.println("Average response time for iteration %d is %.0f ms.".formatted(i + 1,
 						ti.getAverageResponseTime()));
@@ -73,17 +74,18 @@ public class SampleClient {
 		try (BufferedReader r = getReader()) {
 			String name;
 			while ((name = r.readLine()) != null) {
+				if (StringUtils.isEmpty(name)) {
+					log.debug("Read empty string, skipping");
+					continue;
+				}
 				runSearch(client, disableCaching, name);
 			}
 		}
 	}
 
 	private void runSearch(IGenericClient client, boolean disableCaching, String name) {
-		IQuery<?> query = client
-				.search()
-				.forResource("Patient")
-				.where(Patient.FAMILY.matches().value(name));
-		
+		IQuery<?> query = client.search().forResource("Patient").where(Patient.FAMILY.matches().value(name));
+
 		if (disableCaching) {
 			query = query.withAdditionalHeader("CacheControl", "no-cache");
 		}
